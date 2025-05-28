@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>papertrail</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between; /* Align left and right sections */
+            align-items: flex-start;
+        }
+
+        .container {
+            display: flex;
+            justify-content: flex-start;
+            gap: 50px;
+        }
+
+        .notes-container {
+            width: 70%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+
+        #addNoteForm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        input, textarea {
+            width: 80%;
+            height: auto;
+            background-color: #f0c789;
+            border: none;
+            padding: 8px;
+            font-size: 17px;
+            margin-bottom: 5px;
+        }
+
+        .sticky-note {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 100%;
+            min-width: 200px;
+            max-width: 220px;
+            margin: 15px 10px;
+            margin-left: 0;
+            margin-right: 3px;
+            padding: 15px;
+            border-radius: 10px;
+            height: 180px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            text-align: left;
+        }
+
+        .color1 { background-color: #f8e786; } 
+        .color2 { background-color: #df968a; } 
+        .color3 { background-color: #b0eeb0; } 
+        .color4 { background-color: #9ec1cf; } 
+        .color5 { background-color: #cca5cb; } 
+        .color6 { background-color: #f0c789; }
+
+        button {
+            margin-top: 5px;
+            display: block;
+            width: 26%;
+        }
+
+        .input-sticky {
+            display: block;
+            position: absolute;
+            left: 20px;
+            top: 90px;
+            width: 240px;
+            height: 250px;
+            padding: 20px;
+            background-color: #f0c789;
+            border-radius: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            text-align: left;
+        }
+
+        .note-buttons {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            justify-content: space-between;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 25px;
+            color: #97a2c7; 
+        }
+    </style>
+</head>
+
+<body style="background-image: url('https://t4.ftcdn.net/jpg/11/03/86/07/360_F_1103860787_6H21XxE5Yj7OJfWURwZuGuXoNva4kuw7.jpg'); background-size: cover; background-position: justify; background-repeat: no-repeat;">
+
+    <h1>papertrail</h1>
+
+    <div class="container">
+        <!-- Left Side: Input Form -->
+            <div class="input-sticky">
+                <form id="addNoteForm">
+                    <input type="text" id="title" placeholder="Title" required style="color: #000; font-size: 17px;">
+                    <textarea id="content" placeholder="Content" required style="color: #000; font-size: 17px;"></textarea>
+                    <button type="submit">save</button>
+                </form>
+            </div>
+    
+        <!-- Right Side: Notes Archive -->
+        <div class="notes-container" id="notesList"></div>
+    </div>
+    
+    <script>
+        // Load notes from Flask API
+        function loadNotes() {
+        fetch('/archive')
+            .then(response => response.json())
+            .then(data => {
+                const list = document.getElementById('notesList');
+                list.innerHTML = "";
+                data.forEach(note => {
+                    let randomClass = "color" + (Math.floor(Math.random() * 6) + 1); // Picks a class from color1 to color6
+                    list.innerHTML += `<div class="sticky-note ${randomClass}">
+                        <strong>${note[1]}</strong><br>${note[2]}
+                        <div class="note-buttons">
+                            <button onclick="updateNote(${note[0]})">edit</button>
+                            <button onclick="deleteNote(${note[0]})">del</button>
+                        </div>
+                    </div>`;
+                });
+            });
+    }
+
+        // Add a new note
+        document.getElementById('addNoteForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            fetch('/archive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            }).then(() => {
+                loadNotes();
+                document.getElementById('title').value = "";
+                document.getElementById('content').value = "";
+            });
+        });
+
+        // Delete a note
+        function deleteNote(noteId, noteTitle) {
+            fetch(`/archive/${noteId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note_title: noteTitle }) // Sending note_title
+            })
+            .then(response => response.json())
+            .then(() => loadNotes())
+            .catch(error => console.error('Error:', error));
+        }
+
+
+        // Update a note 
+        function updateNote(noteId) {
+            const newTitle = prompt("Enter new title:");
+            const newContent = prompt("Enter new content:");
+            if (newTitle && newContent) {
+                fetch(`/archive/${noteId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle, content: newContent, note_title: newTitle }) // Sending note_title
+                })
+                .then(response => response.json())
+                .then(() => loadNotes())
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+
+        loadNotes();
+    </script>
+</body>
+</html>
